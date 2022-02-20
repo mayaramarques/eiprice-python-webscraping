@@ -1,0 +1,58 @@
+version: '3.5'
+
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    environment:
+      POSTGRES_USER: shopper
+      POSTGRES_PASSWORD: shopper
+      PGDATA: /data/postgres
+    volumes:
+       - postgres:/data/postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - webscraping
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  pgadmin:
+    container_name: pgadmin_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: shopper@webscraping.com
+      PGADMIN_DEFAULT_PASSWORD: shopper
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+       - pgadmin:/var/lib/pgadmin
+    ports:
+      - "5050:5050"
+    networks:
+      - webscraping
+    restart: unless-stopped
+
+  shopper-webscraping:
+    container_name: shopper-webscraping
+    build: .
+    image: shopper-webscraping
+    ports: 
+      - "80:80"
+    networks:
+      - webscraping
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  webscraping:
+    driver: bridge
+
+volumes:
+    postgres:
+    pgadmin:
