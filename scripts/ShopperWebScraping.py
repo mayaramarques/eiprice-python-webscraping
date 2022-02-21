@@ -1,16 +1,19 @@
 import configparser
-
 import requests
 from datetime import datetime
 
-from scripts.model.Assortment import Assortment
+from app.model.Assortment import Assortment
+from app.component.AssortmentComponent import AssortmentComponent
+
+BASE_URL = 'https://siteapi.shopper.com.br/catalog'
 
 
 class ShopperWebScraping:
     def __init__(self):
-        self._bearer = 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjdXN0b21lcklkIjo3OTI5ODQsIm' \
+        self.__bearer = 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjdXN0b21lcklkIjo3OTI5ODQsIm' \
                        'RldmljZVVVSUQiOiI4MWQyYzkxNy0xMDI5LTRmYTctYmNkNS0wOTllYWYzY2Y4OTUiLCJpYXQi' \
                        'OjE2NDUzNjU2MDd9.uiI_gZpRryOJ3gElVwvz0Tfencs9gUlWBNvM2vx4dBA'
+        self.__db = AssortmentComponent()
         return
 
     def __get_config(self):
@@ -30,16 +33,16 @@ class ShopperWebScraping:
             'method': method
         }
         response = requests.post(url=url, data=body)
-        self._bearer = response.headers.get('authorization')
+        self.__bearer = response.headers.get('authorization')
 
     def __get_auth_header(self):
         header = {
-            'Authorization': self._bearer
+            'Authorization': self.__bearer
         }
         return header
 
     def __search_departments(self):
-        url = 'https://siteapi.shopper.com.br/catalog/departments'
+        url = f'{BASE_URL}/departments'
         response = requests.get(url=url, headers=self.__get_auth_header())
         data = response.json()
         return data
@@ -55,7 +58,7 @@ class ShopperWebScraping:
 
     def __search_products(self, id_department: int, sub_department_list: dict):
         page = 0
-        url = f'https://siteapi.shopper.com.br/catalog/products?department={id_department}'
+        url = f'{BASE_URL}/products?department={id_department}'
         products = []
         for sub_department in sub_department_list:
             last = False
@@ -76,19 +79,19 @@ class ShopperWebScraping:
                           product.get('metadata')['subdepartment_url'],
                           product.get('url'),
                           product.get('image'),
-                          str(product.get('price')).replace('R$ ', '').replace(',', '.'),
+                          str(product.get('price')).replace('R$ ', '').replace(',', '.'),
                           product.get('savingPercentage'),
-                          (str(product.get('pause')) == 'false' if 'S' else 'N'),
+                          product.get('paused'),
                           product.get('maxCartQuantity'),
                           product.get('merchants'),
-                          datetime.today(),
-                          datetime.now())
+                          datetime.today().strftime('%Y-%m-%d'),
+                          datetime.today().strftime('%H:%M:%S'))
 
     def __save_product(self, products: dict):
         for product in products:
             structured_product = self.__structure_product(product)
-            # save in postgre
-        return
+            self.__db.save_assortment(structured_product)
+        self.__db.close_db()
 
     def start_collect(self):
         # self.__authenticate()
@@ -96,8 +99,3 @@ class ShopperWebScraping:
         id_department, sub_departments = self.__search_sub_departments(departments)
         products = self.__search_products(id_department, sub_departments)
         self.__save_product(products)
-        return
-
-
-teste = ShopperWebScraping()
-teste.start_collect()
