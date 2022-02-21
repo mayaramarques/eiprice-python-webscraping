@@ -4,3 +4,4 @@ fastapi==0.74
 uvicorn[standard]==0.17
 psycopg==3.0.9
 configparser==5.2.0
+psycopg2==2.9.3
