@@ -5,18 +5,22 @@ services:
     container_name: postgres_container
     image: postgres
     environment:
-      POSTGRES_USER: shopper
+      POSTGRES_USER: root
       POSTGRES_PASSWORD: shopper
       PGDATA: /data/postgres
+      APP_DB_USER: shopper
+      APP_DB_PASS: shopper
+      APP_DB_NAME: shopper
     volumes:
        - postgres:/data/postgres
+       - ./db:/docker-entrypoint-initdb.d/
     ports:
       - "5432:5432"
     networks:
       - webscraping
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shopper"]
+      test: ["CMD-SHELL", "pg_isready -U root"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,8 +44,8 @@ services:
     container_name: shopper-webscraping
     build: .
     image: shopper-webscraping
-    ports: 
-      - "80:80"
+    ports:
+      - "8080:8080"
     networks:
       - webscraping
     restart: unless-stopped
